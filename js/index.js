@@ -22,13 +22,16 @@ const maxWidth = rightLaneX - leftLaneX;
 const defaultObstacleWidth = 200;
 let animationFrameId;
 const obstacleHeight = 20;
-const obstacleSpeed = 3
+const obstacleSpeed = 3;
 let obstacleArray = [];
+let score = 0;
 
+let gameOver = false;
 class Obstacle {
   constructor(random) {
     this.obstacleWidth = (defaultObstacleWidth * random) / 3;
     this.xPosition = leftLaneX + (random * leftLaneX) / 5;
+    this.yPosition = 0;
     //64+(Math.floor(Math.random() * ((rightLaneX-this.obstacleWidth) - leftLaneX + 1) + leftLaneX))
   }
   advanceY() {}
@@ -46,21 +49,18 @@ function drawCar() {
   if (isCarGoingLeft) {
     if (carX - carWidth / 2 > leftLaneX) {
       carX -= carSpeedValue;
-      console.log(carX);
     }
   }
   if (isCarGoingRight) {
     if (carX + carWidth / 2 < rightLaneX) {
       carX += carSpeedValue;
-      console.log(carX);
     }
   }
   ctx.closePath();
 }
 
 function renderObstacles() {
-  obstacleArray.forEach(element => {
-    console.log(element);
+  obstacleArray.forEach((element) => {
     ctx.beginPath();
     ctx.fillStyle = "red";
     ctx.fillRect(
@@ -73,13 +73,10 @@ function renderObstacles() {
   });
 }
 
-function createSingleObstacle(){
-  let random = Math.floor(Math.random() * 3) + 1;
-  return new Obstacle(random)
-}
 function createNewObstacles() {
   for (let i = 0; i < 3; ++i) {
-    obstacleArray.push(createSingleObstacle());
+    let random = Math.floor(Math.random() * 3) + 1;
+    obstacleArray.push(new Obstacle(random));
   }
   let spawnPosition = 0;
   for (let i = 0; i < obstacleArray.length; ++i) {
@@ -90,17 +87,24 @@ function createNewObstacles() {
 }
 
 function updateObstacles() {
-  let index = 0
-  obstacleArray.forEach(element => {
-    if(element.yPosition === (canvasHeight-2)){
-      obstacleArray.shift()
-      obstacleArray.push(createSingleObstacle())
+  let index = 0;
+  obstacleArray.forEach((element) => {
+    if (
+      element.yPosition >= canvasHeight - carY - carHeight &&
+      carX > element.xPosition &&
+      carX < element.xPosition + element.obstacleWidth
+    ) {
+      gameOver =true
+    } else if (element.yPosition > canvasHeight - obstacleHeight) {
+      element.yPosition = 0;
+      score += 1;
+    } else {
+      element.yPosition += obstacleSpeed;
     }
-    element.yPosition += obstacleSpeed
-    index += 1
-  })
+
+    index += 1;
+  });
   renderObstacles();
-  console.log(obstacleArray)
 }
 
 function drawObstacle() {
@@ -108,8 +112,25 @@ function drawObstacle() {
     createNewObstacles();
   } else {
     updateObstacles();
-    console.log("obsta")
   }
+}
+function drawScore() {
+  ctx.beginPath();
+  ctx.font = "30px sans-serif";
+  ctx.fillStyle = "white";
+  ctx.fillText(`Score : ${score}`, canvasWidth / 2 - 40, 30);
+  ctx.closePath();
+}
+
+function gameOverScreen() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.font = "30px sans-serif"
+  ctx.fillStyle = "white";
+  ctx.fillText("GAME OVER", canvasWidth / 2 - 150, canvasHeight/4 - 10);
+  ctx.fillText(`Score : ${score}`, canvasWidth / 2 -150, canvasHeight/4 +50);
 }
 
 function animate() {
@@ -118,10 +139,15 @@ function animate() {
   ctx.drawImage(roadImage, 0, 0, canvas.width, canvas.height);
   ctx.closePath();
   drawCar();
+  drawScore();
   drawObstacle();
-  //if (isCarGoingLeft || isCarGoingRight) {
-  requestAnimationFrame(animate);
-  //}
+
+  if (gameOver) {
+    cancelAnimationFrame(animationFrameId);
+    gameOverScreen()
+  } else {
+    animationFrameId = requestAnimationFrame(animate);
+  }
 }
 
 function startGame() {
